@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+ 
+{% block title %}Мероприятия — AccessEvent{% endblock %}
+ 
+{% block content %}
+<h1>Мероприятия</h1>
+ 
+<div class="filters">
+    <a href="{{ url_for('events_page') }}" class="btn">Все</a>
+    <a href="{{ url_for('events_page') }}?inclusive=1" class="btn">
+        Только инклюзивные
+    </a>
+</div>
+ 
+<div class="events-grid">
+    {% for event in events %}
+    <article class="event-card" aria-label="Мероприятие {{ event.title }}">
+        <h2>{{ event.title }}</h2>
+        <p class="event-date">
+            📅 {{ event.event_date }} · 📍 {{ event.location or 'место не указано' }}
+        </p>
+        <p>{{ event.description or '' }}</p>
+ 
+        <div class="badges" role="group" aria-label="Условия доступности">
+            {% if event.is_inclusive %}
+            <span class="badge badge-inclusive">Инклюзивное</span>
+            {% endif %}
+            {% if event.sign_language %}
+            <span class="badge badge-slg">Сурдоперевод</span>
+            {% endif %}
+            {% if event.visual_alerts %}
+            <span class="badge badge-visual">Визуальные оповещения</span>
+            {% endif %}
+        </div>
+ 
+        <p class="event-status">
+            Статус:
+            <span class="badge badge-{{ event.status or 'pending' }}">
+                {{ event.status or 'pending' }}
+            </span>
+        </p>
+    </article>
+    {% else %}
+    <p>Мероприятий пока нет. Загляните позже!</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+ 
+{% block title %}Регистрация — AccessEvent{% endblock %}
+ 
+{% block content %}
+<div class="form-container">
+    <h1>Регистрация</h1>
+ 
+    {% if error %}
+        <div class="notification notification-error" role="alert" style="position: relative; margin-bottom: 1rem; top: 0; right: 0;">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form id="register-form" method="POST"
+          action="{{ url_for('register_page') }}"
+          aria-label="Форма регистрации">
+        <div class="form-group">
+            <label for="username">Имя пользователя:</label>
+            <input type="text" id="username" name="username"
+                   minlength="1" maxlength="50" required>
+        </div>
+ 
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+ 
+        <div class="form-group">
+            <label for="password">Пароль:</label>
+            <input type="password" id="password" name="password"
+                   minlength="8" aria-describedby="password-hint" required>
+            <small id="password-hint">Минимум 8 символов</small>
+        </div>
+ 
+        <div class="form-group">
+            <label for="role">Роль:</label>
+            <select id="role" name="role">
+                <option value="user">Участник</option>
+                <option value="organizer">Организатор</option>
+            </select>
+        </div>
+ 
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="is_deaf" name="is_deaf" value="true">
+            <label for="is_deaf">
+                Я глухой или слабослышащий
+            </label>
+        </div>
+ 
+        <div class="form-group">
+            <label for="accessibility_needs">
+                Особые потребности (необязательно):
+            </label>
+            <textarea id="accessibility_needs"
+                      name="accessibility_needs"
+                      rows="3"
+                      placeholder="Например: нужна сурдопереводная служба">
+            </textarea>
+        </div>
+ 
+        <button type="submit" class="btn btn-primary">
+            Зарегистрироваться
+        </button>
+    </form>
+</div>
+{% endblock %}
+ 
+{% block scripts %}
+<script>
+    document.getElementById('register-form').addEventListener('submit',
+        function(e) {
+            const username = document.getElementById('username');
+            const password = document.getElementById('password');
+            if (!username.value.trim() || password.value.length < 8) {
+                e.preventDefault();
+                showNotification('Проверьте имя и пароль (минимум 8 символов)',
+                                 'error');
+            }
+        }
+    );
+</script>
+{% endblock %}

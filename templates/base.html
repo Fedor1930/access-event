@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AccessEvent{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header role="banner">
+        <nav aria-label="Главное меню">
+            <a href="{{ url_for('index_page') }}" class="nav-link">Главная</a>
+            <a href="{{ url_for('events_page') }}" class="nav-link">Мероприятия</a>
+            <a href="{{ url_for('login_page') }}" class="nav-link">Вход</a>
+            <a href="{{ url_for('register_page') }}" class="nav-link">Регистрация</a>
+        </nav>
+    </header>
+ 
+    <main role="main">
+        <!-- Блок для отображения flash-уведомлений (всплывающие сообщения справа сверху) -->
+        <div aria-live="polite" id="notifications" class="notifications">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="flash-messages-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                  {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'message' else 'success' }}" style="background-color: #d1e7dd; color: #0f5132; padding: 12px 20px; margin-bottom: 10px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #badbcc;">
+                      {{ message }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+    </main>
+ 
+    <footer role="contentinfo">
+        <p>AccessEvent — платформа инклюзивных мероприятий</p>
+        <p><small>Визуальные уведомления вместо звуковых — для всех пользователей</small></p>
+    </footer>
+ 
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

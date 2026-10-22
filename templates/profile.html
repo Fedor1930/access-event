@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+ 
+{% block title %}Профиль — AccessEvent{% endblock %}
+ 
+{% block content %}
+<div class="profile-container">
+    <h1>Профиль пользователя</h1>
+ 
+    <div class="profile-card">
+        <p><strong>Имя:</strong> {{ user.username }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Роль:</strong>
+           <span class="badge badge-role">{{ user.role }}</span>
+        </p>
+        {% if user.is_deaf %}
+        <p><span class="badge badge-inclusive">Сурдоперевод нужен</span></p>
+        {% endif %}
+    </div>
+ 
+    <h2>Мои регистрации</h2>
+    <ul class="registrations-list">
+        {% for reg in registrations %}
+        <li>
+            Мероприятие #{{ reg.event_id }} —
+            статус: <span class="badge badge-{{ reg.status }}">{{ reg.status }}</span>
+        </li>
+        {% else %}
+        <li>Вы пока не зарегистрированы ни на одно мероприятие.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

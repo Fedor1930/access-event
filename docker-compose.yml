@@ -1,0 +1,26 @@
+version: "3.8"
+ 
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/accessevent
+      - SECRET_KEY=your-secret-key-change-me-in-production
+    depends_on:
+      - db
+ 
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=accessevent
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+ 
+volumes:
+  postgres_data:
