@@ -1,0 +1,25 @@
+name: Day 4 Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  verify-day4:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Dockerfile exists
+        run: |
+          if [ ! -f "Dockerfile" ]; then
+            echo "ERROR: Dockerfile missing"
+            exit 1
+          fi
+
+      - name: Build Docker image
+        run: |
+          docker build -t accessevent:latest .

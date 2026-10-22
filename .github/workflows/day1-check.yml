@@ -1,0 +1,35 @@
+name: Day 1 Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  verify-day1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify tz.md exists
+        run: |
+          if [ ! -f "docs/tz.md" ]; then
+            echo "ERROR: docs/tz.md missing"
+            exit 1
+          fi
+
+      - name: Verify Subject Area section in tz.md
+        run: |
+          if ! grep -qi "предметн" docs/tz.md; then
+            echo "ERROR: Subject Area section missing in docs/tz.md"
+            exit 1
+          fi
+
+      - name: Verify ER diagram file exists
+        run: |
+          if [ ! -f "docs/er_diagram.png" ] && [ ! -f "docs/er_diagram.puml" ] && [ ! -f "docs/er_diagram.pdf" ]; then
+            echo "ERROR: ER diagram file missing in docs/"
+            exit 1
+          fi
