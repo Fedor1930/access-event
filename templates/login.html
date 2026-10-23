@@ -1,56 +1,35 @@
 {% extends "base.html" %}
- 
 {% block title %}Вход — AccessEvent{% endblock %}
- 
 {% block content %}
-<div class="form-container">
-    <h1>Вход</h1>
- 
+  <div class="form-container" style="margin-top: 40px; max-width: 400px; margin-left: auto; margin-right: auto;">
+    <h1>Вход в систему</h1>
+    
     {% if error %}
-        <div class="notification notification-error" role="alert" style="position: relative; margin-bottom: 1rem; top: 0; right: 0;">
-            {{ error }}
-        </div>
+      <div style="background-color: #fce8e6; color: #c5221f; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: 500;">
+        {{ error }}
+      </div>
     {% endif %}
 
-    <form id="login-form" method="POST"
-          action="{{ url_for('login_page') }}"
-          aria-label="Форма входа">
-        <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email"
-                   aria-describedby="email-hint" required>
-            <small id="email-hint">Введите email, использованный при регистрации</small>
-        </div>
- 
-        <div class="form-group">
-            <label for="password">Пароль:</label>
-            <input type="password" id="password" name="password"
-                   aria-describedby="password-hint" required>
-            <small id="password-hint">Минимум 8 символов</small>
-        </div>
- 
-        <button type="submit" class="btn btn-primary">
-            Войти
-        </button>
+    <!-- autocomplete="off" блокирует принудительную вставку старого организатора -->
+    <form method="POST" autocomplete="off">
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="username" style="display:block; margin-bottom: 5px; font-weight: 600;">Email или логин</label>
+        <input type="text" id="username" name="username" required autocomplete="off" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="password" style="display:block; margin-bottom: 5px; font-weight: 600;">Пароль</label>
+        <input type="password" id="password" name="password" required autocomplete="new-password" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer;">Войти</button>
     </form>
- 
-    <p style="margin-top: 1rem;">Нет аккаунта?
-       <a href="{{ url_for('register_page') }}">Зарегистрируйтесь</a>
-    </p>
-</div>
-{% endblock %}
- 
-{% block scripts %}
-<script>
-    document.getElementById('login-form').addEventListener('submit',
-        function(e) {
-            const email = document.getElementById('email');
-            const password = document.getElementById('password');
-            if (!email.value.trim() || !password.value.trim()) {
-                e.preventDefault();
-                showNotification('Заполните email и пароль', 'error');
-            }
-        }
-    );
-</script>
+  </div>
+
+  {% if token %}
+  <script>
+    localStorage.setItem('token', '{{ token }}');
+    window.location.href = '/dashboard';
+  </script>
+  {% endif %}
 {% endblock %}

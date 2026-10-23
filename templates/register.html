@@ -1,83 +1,86 @@
 {% extends "base.html" %}
- 
 {% block title %}Регистрация — AccessEvent{% endblock %}
- 
 {% block content %}
-<div class="form-container">
+  <div class="form-container" style="margin-top: 40px; max-width: 400px; margin-left: auto; margin-right: auto; background: #ffffff; padding: 24px; border-radius: 8px; border: 1px solid #dadce0;">
     <h1>Регистрация</h1>
- 
-    {% if error %}
-        <div class="notification notification-error" role="alert" style="position: relative; margin-bottom: 1rem; top: 0; right: 0;">
-            {{ error }}
-        </div>
-    {% endif %}
+    
+    <div id="error-msg" style="display: none; background-color: #fce8e6; color: #c5221f; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: 500;"></div>
 
-    <form id="register-form" method="POST"
-          action="{{ url_for('register_page') }}"
-          aria-label="Форма регистрации">
-        <div class="form-group">
-            <label for="username">Имя пользователя:</label>
-            <input type="text" id="username" name="username"
-                   minlength="1" maxlength="50" required>
-        </div>
- 
-        <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
-        </div>
- 
-        <div class="form-group">
-            <label for="password">Пароль:</label>
-            <input type="password" id="password" name="password"
-                   minlength="8" aria-describedby="password-hint" required>
-            <small id="password-hint">Минимум 8 символов</small>
-        </div>
- 
-        <div class="form-group">
-            <label for="role">Роль:</label>
-            <select id="role" name="role">
-                <option value="user">Участник</option>
-                <option value="organizer">Организатор</option>
-            </select>
-        </div>
- 
-        <div class="form-group checkbox-group">
-            <input type="checkbox" id="is_deaf" name="is_deaf" value="true">
-            <label for="is_deaf">
-                Я глухой или слабослышащий
-            </label>
-        </div>
- 
-        <div class="form-group">
-            <label for="accessibility_needs">
-                Особые потребности (необязательно):
-            </label>
-            <textarea id="accessibility_needs"
-                      name="accessibility_needs"
-                      rows="3"
-                      placeholder="Например: нужна сурдопереводная служба">
-            </textarea>
-        </div>
- 
-        <button type="submit" class="btn btn-primary">
-            Зарегистрироваться
-        </button>
+    <form id="reg-form" autocomplete="off">
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="username" style="display:block; margin-bottom: 5px; font-weight: 600;">Имя пользователя (Логин)</label>
+        <input type="text" id="username" name="username" required autocomplete="off" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="email" style="display:block; margin-bottom: 5px; font-weight: 600;">Email</label>
+        <input type="email" id="email" name="email" autocomplete="off" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="participant1@mail.ru">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="password" style="display:block; margin-bottom: 5px; font-weight: 600;">Пароль</label>
+        <input type="password" id="password" name="password" required autocomplete="new-password" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="role" style="display:block; margin-bottom: 5px; font-weight: 600;">Роль</label>
+        <select id="role" name="role" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="user">Участник</option>
+          <option value="organizer">Организатор</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer;">Зарегистрироваться</button>
     </form>
-</div>
+  </div>
 {% endblock %}
- 
+
 {% block scripts %}
 <script>
-    document.getElementById('register-form').addEventListener('submit',
-        function(e) {
-            const username = document.getElementById('username');
-            const password = document.getElementById('password');
-            if (!username.value.trim() || password.value.length < 8) {
-                e.preventDefault();
-                showNotification('Проверьте имя и пароль (минимум 8 символов)',
-                                 'error');
-            }
-        }
-    );
+  document.getElementById('reg-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errDiv = document.getElementById('error-msg');
+    errDiv.style.display = 'none';
+
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim() || (username + '@mail.ru');
+    const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
+
+    try {
+      // 1. Создаем пользователя через API
+      const regRes = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password, role })
+      });
+
+      const regData = await regRes.json();
+      if (!regRes.ok) {
+        errDiv.textContent = regData.error || 'Ошибка при регистрации';
+        errDiv.style.display = 'block';
+        return;
+      }
+
+      // 2. Сразу же логиним пользователя для получения JWT-токена
+      const loginRes = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const loginData = await loginRes.json();
+      if (loginRes.ok && loginData.token) {
+        localStorage.setItem('token', loginData.token);
+        window.location.href = '/dashboard';
+      } else {
+        window.location.href = '/login';
+      }
+    } catch (err) {
+      console.error(err);
+      errDiv.textContent = 'Ошибка подключения к серверу';
+      errDiv.style.display = 'block';
+    }
+  });
 </script>
 {% endblock %}

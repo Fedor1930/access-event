@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Мероприятие — AccessEvent{% endblock %}
+{% block content %}
+  <div style="background: #ffffff; padding: 24px; border-radius: 8px; border: 1px solid #dadce0; margin-top: 20px;">
+    <h1 id="event-title" style="margin-bottom: 12px; color: #202124;">Загрузка...</h1>
+    <p style="margin-bottom: 8px;"><strong>Дата:</strong> <span id="event-date">-</span></p>
+    <p style="margin-bottom: 16px;"><strong>Тип:</strong> <span id="event-type" class="badge">-</span></p>
+
+    <!-- Желтый баннер со статусом заявки (pending) -->
+    <div id="status-banner" style="display: none; background-color: #fef7e0; color: #b06000; border: 1px solid #f9ab00; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-weight: 600;">
+      ⏳ Ваша заявка на участие находится на рассмотрении (pending)
+    </div>
+
+    <button id="register-btn" class="btn btn-primary" style="padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">Зарегистрироваться на мероприятие</button>
+  </div>
+
+  <!-- Блок с текстовым чатом -->
+  <div style="background: #ffffff; padding: 24px; border-radius: 8px; border: 1px solid #dadce0; margin-top: 20px;">
+    <h2>Чат участников</h2>
+    <div id="chat-box" style="height: 180px; overflow-y: auto; border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; margin: 12px 0; background: #f8f9fa;">
+      <p style="color: #5f6368; margin-bottom: 8px;"><em>Организатор: Добро пожаловать! Задавайте вопросы по мероприятию здесь.</em></p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <input type="text" id="chat-input" placeholder="Напишите сообщение..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      <button id="send-chat" class="btn btn-primary" style="padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer;">Отправить</button>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const eventId = Number("{{ event_id }}"); // Гарантируем, что это число
+    const token = localStorage.getItem('token');
+
+    // Загрузка информации о мероприятии
+    try {
+      const res = await fetch('/api/events');
+      if (res.ok) {
+        const events = await res.json();
+        // Используем нестрогое сравнение == на случай разницы типов ID
+        const ev = events.find(e => Number(e.id) === eventId);
+        if (ev) {
+          document.getElementById('event-title').textContent = ev.title;
+          document.getElementById('event-date').textContent = ev.event_date;
+          document.getElementById('event-type').textContent = ev.is_inclusive ? 'Инклюзивное' : 'Обычное';
+        } else {
+          document.getElementById('event-title').textContent = 'Мероприятие не найдено';
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      document.getElementById('event-title').textContent = 'Ошибка загрузки';
+    }
+
+    // Проверка статуса регистрации
+    if (token) {
+      try {
+        const regRes = await fetch('/api/my-registrations', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (regRes.ok) {
+          const regs = await regRes.json();
+          const hasReg = regs.some(r => Number(r.event_id) === eventId);
+          if (hasReg) {
+            document.getElementById('status-banner').style.display = 'block';
+            document.getElementById('register-btn').style.display = 'none';
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Нажатие на кнопку регистрации
+    document.getElementById('register-btn').addEventListener('click', async () => {
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+      try {
+        const res = await fetch(`/api/events/${eventId}/register`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          document.getElementById('status-banner').style.display = 'block';
+          document.getElementById('register-btn').style.display = 'none';
+        } else {
+          alert('Не удалось зарегистрироваться');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    // Отправка сообщений в чат (безопасно от XSS)
+    document.getElementById('send-chat').addEventListener('click', () => {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (text) {
+        const chatBox = document.getElementById('chat-box');
+        
+        const msg = document.createElement('p');
+        msg.style.marginBottom = '8px';
+        
+        const boldSpan = document.createElement('strong');
+        boldSpan.textContent = 'Вы: ';
+        
+        const textNode = document.createTextNode(text);
+        
+        msg.appendChild(boldSpan);
+        msg.appendChild(textNode);
+        
+        chatBox.appendChild(msg);
+        input.value = '';
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    });
+  });
+</script>
+{% endblock %}

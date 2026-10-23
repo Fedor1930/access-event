@@ -1,47 +1,75 @@
 {% extends "base.html" %}
- 
 {% block title %}Мероприятия — AccessEvent{% endblock %}
- 
 {% block content %}
-<h1>Мероприятия</h1>
- 
-<div class="filters">
-    <a href="{{ url_for('events_page') }}" class="btn">Все</a>
-    <a href="{{ url_for('events_page') }}?inclusive=1" class="btn">
-        Только инклюзивные
-    </a>
-</div>
- 
-<div class="events-grid">
-    {% for event in events %}
-    <article class="event-card" aria-label="Мероприятие {{ event.title }}">
-        <h2>{{ event.title }}</h2>
-        <p class="event-date">
-            📅 {{ event.event_date }} · 📍 {{ event.location or 'место не указано' }}
-        </p>
-        <p>{{ event.description or '' }}</p>
- 
-        <div class="badges" role="group" aria-label="Условия доступности">
-            {% if event.is_inclusive %}
-            <span class="badge badge-inclusive">Инклюзивное</span>
-            {% endif %}
-            {% if event.sign_language %}
-            <span class="badge badge-slg">Сурдоперевод</span>
-            {% endif %}
-            {% if event.visual_alerts %}
-            <span class="badge badge-visual">Визуальные оповещения</span>
-            {% endif %}
-        </div>
- 
-        <p class="event-status">
-            Статус:
-            <span class="badge badge-{{ event.status or 'pending' }}">
-                {{ event.status or 'pending' }}
+  <h1>Мероприятия</h1>
+
+  <div style="margin: 20px 0; display: flex; gap: 10px;">
+    <button id="filter-all" class="btn btn-primary">Все</button>
+    <button id="filter-inclusive" class="btn">Только инклюзивные</button>
+  </div>
+
+  <div id="events-container" class="events-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+    <p>Загрузка мероприятий...</p>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const container = document.getElementById('events-container');
+    let allEvents = [];
+
+    async function fetchEvents() {
+      try {
+        const res = await fetch('/api/events');
+        if (res.ok) {
+          allEvents = await res.json();
+          renderEvents(allEvents);
+        } else {
+          container.innerHTML = '<p>Ошибка при загрузке мероприятий.</p>';
+        }
+      } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p>Не удалось подключиться к серверу.</p>';
+      }
+    }
+
+    function renderEvents(events) {
+      if (events.length === 0) {
+        container.innerHTML = '<p>Мероприятий пока нет.</p>';
+        return;
+      }
+      container.innerHTML = events.map(ev => `
+        <div class="event-card" style="background: #ffffff; border: 1px solid #dadce0; padding: 16px; border-radius: 8px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onclick="window.location.href='/event/${ev.id}'">
+          <h3 style="margin-bottom: 8px; color: #1a73e8;">${ev.title}</h3>
+          <p class="event-date" style="margin-bottom: 10px; color: #5f6368;">📅 ${ev.event_date}</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+            <span class="badge ${ev.is_inclusive ? 'badge-inclusive' : 'badge-slg'}" style="background: #e6f4ea; color: #137333; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
+              ${ev.is_inclusive ? 'Инклюзивное' : 'Обычное'}
             </span>
-        </p>
-    </article>
-    {% else %}
-    <p>Мероприятий пока нет. Загляните позже!</p>
-    {% endfor %}
-</div>
+            <a href="/event/${ev.id}" class="btn btn-primary" style="padding: 6px 12px; background: #1a73e8; color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">Открыть</a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const btnAll = document.getElementById('filter-all');
+    const btnInclusive = document.getElementById('filter-inclusive');
+
+    btnAll.addEventListener('click', () => {
+      btnAll.classList.add('btn-primary');
+      btnInclusive.classList.remove('btn-primary');
+      renderEvents(allEvents);
+    });
+
+    btnInclusive.addEventListener('click', () => {
+      btnInclusive.classList.add('btn-primary');
+      btnAll.classList.remove('btn-primary');
+      const filtered = allEvents.filter(ev => ev.is_inclusive);
+      renderEvents(filtered);
+    });
+
+    fetchEvents();
+  });
+</script>
 {% endblock %}

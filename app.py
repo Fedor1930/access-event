@@ -10,12 +10,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Безопасная конфигурация с фоллбэком (решает проблему с тестами и запуском без .env)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-for-tests')
 
-# Импортируем db и модели из models.py
 from models import db, User, Event, Registration
 
 db.init_app(app)
@@ -57,7 +55,7 @@ def api_root():
     return {"message": "AccessEvent API is running!"}
 
 @app.route('/api/register', methods=['POST'])
-def register():
+def register_api():
     data = request.get_json() or {}
     username = data.get('username')
     email = data.get('email', username + '@mail.ru' if username else '')
@@ -81,17 +79,14 @@ def register():
     return jsonify({"message": "Пользователь успешно зарегистрирован!", "user_id": new_user.id}), 201
 
 @app.route('/api/login', methods=['POST'])
-def login():
+def login_api():
     data = request.get_json() or {}
-    email = data.get('email')
-    username = data.get('username')
+    email = data.get('email') or data.get('username')
     password = data.get('password')
 
     user = None
     if email:
-        user = User.query.filter_by(email=email).first()
-    elif username:
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter_by(email=email).first() or User.query.filter_by(username=email).first()
 
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Неверный логин или пароль"}), 401
@@ -102,6 +97,16 @@ def login():
     }
     token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
     return jsonify({"token": token, "role": user.role}), 200
+
+@app.route('/api/me', methods=['GET'])
+@token_required
+def get_me(current_user):
+    return jsonify({
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role
+    }), 200
 
 @app.route('/api/events', methods=['GET'])
 def get_events():
@@ -121,7 +126,7 @@ def get_events():
 def create_event(current_user):
     data = request.get_json() or {}
     title = data.get('title')
-    event_date = data.get('event_date', '2026-11-01 12:00:00')
+    event_date = data.get('event_date', '2026-12-01 12:00:00')
 
     if not title:
         return jsonify({"error": "Поле title обязательно"}), 400
@@ -157,6 +162,21 @@ def my_registrations(current_user):
     result = [{"id": r.id, "event_id": r.event_id, "status": r.status} for r in regs]
     return jsonify(result), 200
 
+@app.route('/api/my-events', methods=['GET'])
+@token_required
+def get_my_events(current_user):
+    if current_user.role not in ['organizer', 'admin']:
+        return jsonify({"error": "Доступ запрещен"}), 403
+    
+    events = Event.query.filter_by(organizer_id=current_user.id).all()
+    result = [{
+        "id": e.id,
+        "title": e.title,
+        "event_date": str(e.event_date),
+        "is_inclusive": e.is_inclusive
+    } for e in events]
+    return jsonify(result), 200
+
 
 # ===== Фронтенд маршруты =====
 
@@ -168,44 +188,69 @@ def index_page():
 def events_page():
     return render_template('events.html')
 
+@app.route('/event/<int:event_id>')
+def event_detail_page(event_id):
+    return render_template('event_detail.html', event_id=event_id)
+
+@app.route('/login', methods=['GET', 'POST'])
 @app.route('/login-view', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
-        username = (request.form.get('email') or request.form.get('username') or '').strip()
-        password = request.form.get('password') or ''
-        user = User.query.filter_by(username=username).first() or User.query.filter_by(email=username).first()
-        if user and user.check_password(password):
-            return redirect(url_for('profile_page', user_id=user.id))
-        return render_template('login.html', error='Неверный логин или пароль'), 401
+        login_input = request.form.get('email') or request.form.get('username')
+        password = request.form.get('password')
+        
+        user = None
+        if login_input:
+            user = User.query.filter_by(email=login_input).first() or User.query.filter_by(username=login_input).first()
+            
+        if user and check_password_hash(user.password_hash, password):
+            token_payload = {
+                'user_id': user.id,
+                'exp': datetime.utcnow() + timedelta(hours=24)
+            }
+            token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
+            return render_template('login.html', token=token, role=user.role)
+        
+        return render_template('login.html', error='Неверный логин или пароль')
+        
     return render_template('login.html')
 
+@app.route('/register', methods=['GET', 'POST'])
 @app.route('/register-view', methods=['GET', 'POST'])
 def register_page():
     if request.method == 'POST':
-        username = (request.form.get('username') or '').strip()
-        email = (request.form.get('email') or username + '@mail.ru').strip()
-        password = request.form.get('password') or ''
+        username = request.form.get('username')
+        email = request.form.get('email') or (username + '@mail.ru' if username else '')
+        password = request.form.get('password')
+        role = request.form.get('role', 'user')
         
-        if not username or len(password) < 8:
-            return render_template('register.html', error='Проверьте поля: имя обязательно, пароль минимум 8 символов'), 400
-
-        if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
-            return render_template('register.html', error='Имя пользователя или email уже заняты'), 400
-
-        new_user = User(username=username, email=email, role='user')
-        new_user.set_password(password)
+        if not username or not password:
+            return render_template('register.html', error='Заполните обязательные поля')
+            
+        if User.query.filter_by(email=email).first() or User.query.filter_by(username=username).first():
+            return render_template('register.html', error='Имя или email уже заняты')
+            
+        new_user = User(username=username, email=email, role=role)
+        new_user.password_hash = generate_password_hash(password)
         db.session.add(new_user)
         db.session.commit()
-        return redirect(url_for('login_page'))
-
+        
+        token_payload = {
+            'user_id': new_user.id,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }
+        token = jwt.encode(token_payload, app.config['SECRET_KEY'], algorithm='HS256')
+        return render_template('register.html', token=token, role=new_user.role)
+        
     return render_template('register.html')
 
+@app.route('/dashboard')
+def dashboard_page():
+    return render_template('profile.html')
+
 @app.route('/profile/<int:user_id>')
-def profile_page(user_id):
-    user = db.session.get(User, user_id)
-    if user is None:
-        return 'Пользователь не найден', 404
-    return render_template('profile.html', user=user, registrations=[])
+def profile_legacy_page(user_id):
+    return render_template('profile.html')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

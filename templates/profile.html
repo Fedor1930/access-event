@@ -1,32 +1,170 @@
 {% extends "base.html" %}
- 
-{% block title %}Профиль — AccessEvent{% endblock %}
- 
+{% block title %}Личный кабинет — AccessEvent{% endblock %}
 {% block content %}
-<div class="profile-container">
-    <h1>Профиль пользователя</h1>
- 
-    <div class="profile-card">
-        <p><strong>Имя:</strong> {{ user.username }}</p>
-        <p><strong>Email:</strong> {{ user.email }}</p>
-        <p><strong>Роль:</strong>
-           <span class="badge badge-role">{{ user.role }}</span>
-        </p>
-        {% if user.is_deaf %}
-        <p><span class="badge badge-inclusive">Сурдоперевод нужен</span></p>
-        {% endif %}
+  <h1>Личный кабинет</h1>
+
+  <!-- Карточка информации о текущем пользователе -->
+  <section class="profile-card" style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #dadce0; margin-top: 15px; margin-bottom: 20px;">
+    <h2 style="font-size: 1.2rem; margin-bottom: 10px;">Данные вашего аккаунта</h2>
+    <p style="margin-bottom: 6px;"><strong>Логин (Имя):</strong> <span id="user-username" style="color: #1a73e8;">Загрузка...</span></p>
+    <p style="margin-bottom: 6px;"><strong>Email:</strong> <span id="user-email">Загрузка...</span></p>
+    <p style="margin-bottom: 12px;"><strong>Роль:</strong> <span id="user-role" class="badge badge-role">Загрузка...</span></p>
+    <button id="logout-btn" class="btn" style="background-color: #c5221f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Выйти из аккаунта</button>
+  </section>
+
+  <!-- Секция созданных организатором мероприятий (только для организатора) -->
+  <section id="organizer-events-section" aria-labelledby="org-events-heading" style="display: none; margin-bottom: 24px;">
+    <h2 id="org-events-heading" style="font-size: 1.2rem; margin-bottom: 8px;">Мои созданные мероприятия</h2>
+    <div id="my-organized-events" style="display: flex; flex-direction: column; gap: 10px;">
+      <p style="color: #5f6368;">Загрузка ваших мероприятий...</p>
     </div>
- 
-    <h2>Мои регистрации</h2>
-    <ul class="registrations-list">
-        {% for reg in registrations %}
-        <li>
-            Мероприятие #{{ reg.event_id }} —
-            статус: <span class="badge badge-{{ reg.status }}">{{ reg.status }}</span>
-        </li>
-        {% else %}
-        <li>Вы пока не зарегистрированы ни на одно мероприятие.</li>
-        {% endfor %}
-    </ul>
-</div>
+  </section>
+
+  <section aria-labelledby="notif-heading" style="margin-bottom: 24px;">
+    <h2 id="notif-heading" style="font-size: 1.2rem; margin-bottom: 8px;">Уведомления</h2>
+    <div id="notifications" aria-live="polite"></div>
+    <button id="mark-read" class="btn" style="margin-top: 8px;">Отметить все прочитанными</button>
+  </section>
+
+  <section aria-labelledby="reg-heading2" style="margin-bottom: 24px;">
+    <h2 id="reg-heading2" style="font-size: 1.2rem; margin-bottom: 8px;">Мои регистрации</h2>
+    <div id="my-registrations"></div>
+  </section>
+
+  <!-- Секция создания мероприятий (видна только организаторам) -->
+  <section id="create-event-section" aria-labelledby="create-heading" style="display: none; margin-top: 20px;">
+    <h2 id="create-heading" style="font-size: 1.2rem; margin-bottom: 12px;">Создать мероприятие</h2>
+    <form id="event-form" aria-labelledby="create-heading" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e0e0e0; max-width: 500px;">
+      <div style="margin-bottom: 12px;">
+        <label for="e-title" style="display:block; font-weight:600; margin-bottom:4px;">Название</label>
+        <input id="e-title" type="text" name="title" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label for="e-date" style="display:block; font-weight:600; margin-bottom:4px;">Дата и время (ГГГГ-ММ-ДД ЧЧ:ММ:СС)</label>
+        <input id="e-date" type="text" name="event_date" required placeholder="2026-12-01 12:00:00" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label for="e-loc" style="display:block; font-weight:600; margin-bottom:4px;">Место</label>
+        <input id="e-loc" type="text" name="location" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label for="e-desc" style="display:block; font-weight:600; margin-bottom:4px;">Описание</label>
+        <textarea id="e-desc" name="description" rows="3" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;"></textarea>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin: 14px 0;">
+        <input type="checkbox" name="is_inclusive" id="chk-inclusive" style="width: 18px; height: 18px;">
+        <label for="chk-inclusive" style="cursor: pointer; margin:0;">Инклюзивное мероприятие</label>
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background:#1a73e8; color:white; border:none; border-radius:4px; cursor:pointer;">Создать</button>
+    </form>
+    <div id="event-msg" role="status" aria-live="polite" style="margin-top: 10px; font-weight: bold;"></div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+
+    // Функция загрузки созданных мероприятий организатора
+    async function loadOrganizerEvents() {
+      try {
+        const res = await fetch('/api/my-events', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          const events = await res.json();
+          const container = document.getElementById('my-organized-events');
+          if (events.length === 0) {
+            container.innerHTML = '<p style="color: #5f6368;">Вы еще не создали ни одного мероприятия.</p>';
+            return;
+          }
+          container.innerHTML = events.map(ev => `
+            <div style="background: #ffffff; border: 1px solid #dadce0; padding: 12px 16px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong>${ev.title}</strong><br>
+                <span style="font-size: 0.85rem; color: #5f6368;">📅 ${ev.event_date}</span>
+              </div>
+              <span class="badge ${ev.is_inclusive ? 'badge-inclusive' : 'badge-slg'}">${ev.is_inclusive ? 'Инклюзивное' : 'Обычное'}</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Загружаем данные пользователя
+    try {
+      const res = await fetch('/api/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (res.ok) {
+        const user = await res.json();
+        document.getElementById('user-username').textContent = user.username;
+        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('user-role').textContent = user.role;
+
+        // Если организатор — показываем форму создания и список его мероприятий
+        if (user.role === 'organizer' || user.role === 'admin') {
+          document.getElementById('create-event-section').style.display = 'block';
+          document.getElementById('organizer-events-section').style.display = 'block';
+          loadOrganizerEvents();
+        }
+      } else {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Кнопка выхода из аккаунта
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    });
+
+    // Обработка формы создания мероприятия
+    const eventForm = document.getElementById('event-form');
+    if (eventForm) {
+      eventForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(eventForm);
+        const data = {
+          title: formData.get('title'),
+          event_date: formData.get('event_date'),
+          location: formData.get('location'),
+          description: formData.get('description'),
+          is_inclusive: eventForm.querySelector('input[name="is_inclusive"]').checked
+        };
+
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        const msgDiv = document.getElementById('event-msg');
+        if (response.ok) {
+          msgDiv.style.color = '#188738';
+          msgDiv.textContent = 'Мероприятие успешно создано!';
+          eventForm.reset();
+          loadOrganizerEvents(); // сразу обновляем список созданных мероприятий
+        } else {
+          msgDiv.style.color = '#c5221f';
+          msgDiv.textContent = result.error || 'Ошибка при создании';
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}
